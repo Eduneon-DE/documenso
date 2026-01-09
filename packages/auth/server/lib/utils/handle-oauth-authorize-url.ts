@@ -51,9 +51,9 @@ export const handleOAuthAuthorizeUrl = async (options: HandleOAuthAuthorizeUrlOp
 
   const scopes = clientOptions.scope;
   const state = generateState();
-
   const codeVerifier = generateCodeVerifier();
 
+  // Use PKCE with S256 (supported by Authentik)
   const url = oAuthClient.createAuthorizationURLWithPKCE(
     authorization_endpoint,
     state,

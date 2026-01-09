@@ -14,6 +14,7 @@ import { oauthRoute } from './routes/oauth';
 import { passkeyRoute } from './routes/passkey';
 import { sessionRoute } from './routes/session';
 import { signOutRoute } from './routes/sign-out';
+import { ssoRoute } from './routes/sso';
 import { twoFactorRoute } from './routes/two-factor';
 import type { HonoAuthContext } from './types/context';
 
@@ -49,7 +50,8 @@ export const auth = new Hono<HonoAuthContext>()
   .route('/oauth', oauthRoute)
   .route('/email-password', emailPasswordRoute)
   .route('/passkey', passkeyRoute)
-  .route('/two-factor', twoFactorRoute);
+  .route('/two-factor', twoFactorRoute)
+  .route('/sso', ssoRoute);
 
 /**
  * Handle errors.

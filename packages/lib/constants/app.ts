@@ -3,6 +3,14 @@ import { env } from '@documenso/lib/utils/env';
 export const APP_DOCUMENT_UPLOAD_SIZE_LIMIT =
   Number(env('NEXT_PUBLIC_DOCUMENT_SIZE_UPLOAD_LIMIT')) || 50;
 
+export const NEXT_PUBLIC_BASE_PATH = () => {
+  const basePath = env('NEXT_PUBLIC_BASE_PATH') ?? '';
+  // Ensure base path starts with / if provided and doesn't end with /
+  if (!basePath) return '';
+  const normalized = basePath.startsWith('/') ? basePath : `/${basePath}`;
+  return normalized.endsWith('/') ? normalized.slice(0, -1) : normalized;
+};
+
 export const NEXT_PUBLIC_WEBAPP_URL = () =>
   env('NEXT_PUBLIC_WEBAPP_URL') ?? 'http://localhost:3000';
 
