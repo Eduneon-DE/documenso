@@ -7,14 +7,13 @@ import {
   data,
   isRouteErrorResponse,
   useLoaderData,
-  useLocation,
 } from 'react-router';
 import { PreventFlashOnWrongTheme, ThemeProvider, useTheme } from 'remix-themes';
 
 import { getOptionalSession } from '@documenso/auth/server/lib/utils/get-session';
 import { SessionProvider } from '@documenso/lib/client-only/providers/session';
 import { APP_I18N_OPTIONS, type SupportedLanguageCodes } from '@documenso/lib/constants/i18n';
-import { createPublicEnv } from '@documenso/lib/utils/env';
+import { createPublicEnv, env } from '@documenso/lib/utils/env';
 import { extractLocaleData } from '@documenso/lib/utils/i18n';
 import { TrpcProvider } from '@documenso/trpc/react';
 import { getOrganisationSession } from '@documenso/trpc/server/organisation-router/get-organisation-session';
@@ -62,10 +61,14 @@ export async function loader({ request }: Route.LoaderArgs) {
     organisations = await getOrganisationSession({ userId: session.user.id });
   }
 
+  // Force light theme if dark mode is disabled
+  const disableDarkMode = env('NEXT_PUBLIC_DISABLE_DARK_MODE') === 'true';
+  const theme = disableDarkMode ? 'light' : getTheme();
+
   return data(
     {
       lang,
-      theme: getTheme(),
+      theme,
       disableAnimations,
       session: session.isAuthenticated
         ? {
@@ -86,8 +89,6 @@ export async function loader({ request }: Route.LoaderArgs) {
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const { theme } = useLoaderData<typeof loader>() || {};
-
-  const location = useLocation();
 
   return (
     <ThemeProvider specifiedTheme={theme} themeAction="/api/theme">

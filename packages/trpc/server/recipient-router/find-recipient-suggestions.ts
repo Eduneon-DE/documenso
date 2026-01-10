@@ -14,21 +14,27 @@ export const findRecipientSuggestionsRoute = authenticatedProcedure
   .output(ZGetRecipientSuggestionsResponseSchema)
   .query(async ({ input, ctx }) => {
     const { teamId, user } = ctx;
-    const { query } = input;
+    const { query, take, cursor } = input;
 
     ctx.logger.info({
       input: {
         query,
+        take,
+        cursor,
       },
     });
 
-    const suggestions = await getRecipientSuggestions({
+    const result = await getRecipientSuggestions({
       userId: user.id,
       teamId,
       query,
+      take,
+      skip: cursor,
     });
 
     return {
-      results: suggestions,
+      results: result.suggestions,
+      hasMore: result.hasMore,
+      nextCursor: result.nextSkip,
     };
   });

@@ -35,9 +35,9 @@ import { trpc } from '@documenso/trpc/react';
 import { AnimateGenericFadeInOut } from '@documenso/ui/components/animate/animate-generic-fade-in-out';
 import { RecipientActionAuthSelect } from '@documenso/ui/components/recipient/recipient-action-auth-select';
 import {
-  RecipientAutoCompleteInput,
   type RecipientAutoCompleteOption,
-} from '@documenso/ui/components/recipient/recipient-autocomplete-input';
+  RecipientMuiAutocomplete,
+} from '@documenso/ui/components/recipient/recipient-mui-autocomplete';
 import { RecipientRoleSelect } from '@documenso/ui/components/recipient/recipient-role-select';
 import { cn } from '@documenso/ui/lib/utils';
 import { Button } from '@documenso/ui/primitives/button';
@@ -98,6 +98,7 @@ export const EnvelopeEditorRecipientForm = () => {
 
   const [searchParams, setSearchParams] = useSearchParams();
   const [recipientSearchQuery, setRecipientSearchQuery] = useState('');
+  const [isRecipientDropdownOpen, setIsRecipientDropdownOpen] = useState(false);
   const [isAiEnableDialogOpen, setIsAiEnableDialogOpen] = useState(false);
 
   // AI recipient detection dialog state
@@ -150,16 +151,30 @@ export const EnvelopeEditorRecipientForm = () => {
   const isFirstRender = useRef(true);
   const { recipients, fields } = envelope;
 
-  const { data: recipientSuggestionsData, isLoading } = trpc.recipient.suggestions.find.useQuery(
+  const {
+    data: recipientSuggestionsData,
+    isLoading,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+  } = trpc.recipient.suggestions.find.useInfiniteQuery(
     {
       query: debouncedRecipientSearchQuery,
+      take: 10,
     },
     {
-      enabled: debouncedRecipientSearchQuery.length > 1,
+      // Only fetch when dropdown is open
+      enabled: isRecipientDropdownOpen,
+      getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.nextCursor : undefined),
+      initialCursor: 0,
     },
   );
 
-  const recipientSuggestions = recipientSuggestionsData?.results || [];
+  // Flatten all pages into a single array
+  const recipientSuggestions = useMemo(() => {
+    if (!recipientSuggestionsData?.pages) return [];
+    return recipientSuggestionsData.pages.flatMap((page) => page.results);
+  }, [recipientSuggestionsData?.pages]);
 
   const defaultRecipients = [
     {
@@ -946,7 +961,7 @@ export const EnvelopeEditorRecipientForm = () => {
                                       )}
 
                                       <FormControl>
-                                        <RecipientAutoCompleteInput
+                                        <RecipientMuiAutocomplete
                                           type="email"
                                           placeholder={t`Email`}
                                           value={field.value}
@@ -963,7 +978,11 @@ export const EnvelopeEditorRecipientForm = () => {
                                             field.onChange(query);
                                             setRecipientSearchQuery(query);
                                           }}
+                                          onOpen={() => setIsRecipientDropdownOpen(true)}
                                           loading={isLoading}
+                                          loadingMore={isFetchingNextPage}
+                                          hasNextPage={hasNextPage}
+                                          fetchNextPage={fetchNextPage}
                                           data-testid="signer-email-input"
                                           maxLength={254}
                                         />
@@ -992,10 +1011,10 @@ export const EnvelopeEditorRecipientForm = () => {
                                       )}
 
                                       <FormControl>
-                                        <RecipientAutoCompleteInput
+                                        <RecipientMuiAutocomplete
                                           type="text"
                                           placeholder={t`Recipient ${index + 1}`}
-                                          {...field}
+                                          value={field.value}
                                           disabled={
                                             snapshot.isDragging ||
                                             isSubmitting ||
@@ -1009,7 +1028,11 @@ export const EnvelopeEditorRecipientForm = () => {
                                             field.onChange(query);
                                             setRecipientSearchQuery(query);
                                           }}
+                                          onOpen={() => setIsRecipientDropdownOpen(true)}
                                           loading={isLoading}
+                                          loadingMore={isFetchingNextPage}
+                                          hasNextPage={hasNextPage}
+                                          fetchNextPage={fetchNextPage}
                                           maxLength={255}
                                         />
                                       </FormControl>

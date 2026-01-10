@@ -62,7 +62,18 @@ export default defineConfig({
   },
   optimizeDeps: {
     entries: ['./app/**/*', '../../packages/ui/**/*', '../../packages/lib/**/*'],
-    include: ['prop-types', 'file-selector', 'attr-accept'],
+    include: [
+      'prop-types',
+      'file-selector',
+      'attr-accept',
+      '@mui/material',
+      '@mui/material/Autocomplete',
+      '@mui/material/TextField',
+      '@mui/material/Box',
+      '@mui/material/styles',
+      '@emotion/react',
+      '@emotion/styled',
+    ],
     exclude: [
       'node_modules',
       '@napi-rs/canvas',
