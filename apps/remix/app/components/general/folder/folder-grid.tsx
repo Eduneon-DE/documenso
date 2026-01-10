@@ -1,20 +1,22 @@
 import { useState } from 'react';
 
 import { Trans } from '@lingui/react/macro';
-import { FolderType } from '@prisma/client';
-import { FolderIcon, HomeIcon } from 'lucide-react';
+import { FolderType, ReadStatus } from '@prisma/client';
+import { FolderIcon, HomeIcon, InboxIcon } from 'lucide-react';
 import { Link } from 'react-router';
 
 import { useCurrentOrganisation } from '@documenso/lib/client-only/providers/organisation';
 import { formatDocumentsPath, formatTemplatesPath } from '@documenso/lib/utils/teams';
 import { trpc } from '@documenso/trpc/react';
 import { type TFolderWithSubfolders } from '@documenso/trpc/server/folder-router/schema';
+import { Button } from '@documenso/ui/primitives/button';
 import { Skeleton } from '@documenso/ui/primitives/skeleton';
 
 import { FolderCreateDialog } from '~/components/dialogs/folder-create-dialog';
 import { FolderDeleteDialog } from '~/components/dialogs/folder-delete-dialog';
 import { FolderMoveDialog } from '~/components/dialogs/folder-move-dialog';
 import { FolderUpdateDialog } from '~/components/dialogs/folder-update-dialog';
+import { SettingsDialog } from '~/components/dialogs/settings-dialog';
 import { DocumentUploadButtonLegacy } from '~/components/general/document/document-upload-button-legacy';
 import { FolderCard, FolderCardEmpty } from '~/components/general/folder/folder-card';
 import { useCurrentTeam } from '~/providers/team';
@@ -40,6 +42,10 @@ export const FolderGrid = ({ type, parentId }: FolderGridProps) => {
   const { data: foldersData, isPending } = trpc.folder.getFolders.useQuery({
     type,
     parentId,
+  });
+
+  const { data: unreadCountData } = trpc.document.inbox.getCount.useQuery({
+    readStatus: ReadStatus.NOT_OPENED,
   });
 
   const formatBreadCrumbPath = (folderId: string) => {
@@ -96,7 +102,7 @@ export const FolderGrid = ({ type, parentId }: FolderGridProps) => {
           )}
         </div>
 
-        <div className="flex gap-4 sm:flex-row sm:justify-end">
+        <div className="flex items-center gap-4 sm:flex-row sm:justify-end">
           <EnvelopeUploadButton type={type} folderId={parentId || undefined} />
 
           {/* If you delete this, delete the component as well. */}
@@ -105,6 +111,20 @@ export const FolderGrid = ({ type, parentId }: FolderGridProps) => {
           )}
 
           <FolderCreateDialog type={type} />
+
+          <Button asChild variant="outline" className="relative h-10 w-10 rounded-lg">
+            <Link to="/inbox" className="relative flex h-10 w-10 items-center justify-center">
+              <InboxIcon className="h-5 w-5 flex-shrink-0 text-muted-foreground transition-colors hover:text-foreground" />
+
+              {unreadCountData && unreadCountData.count > 0 && (
+                <span className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground">
+                  {unreadCountData.count > 99 ? '99+' : unreadCountData.count}
+                </span>
+              )}
+            </Link>
+          </Button>
+
+          <SettingsDialog />
         </div>
       </div>
 

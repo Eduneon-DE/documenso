@@ -12,6 +12,7 @@ import { Alert, AlertDescription } from '@documenso/ui/primitives/alert';
 import { Button } from '@documenso/ui/primitives/button';
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -106,79 +107,81 @@ export const DocumentDeleteDialog = ({
           </DialogDescription>
         </DialogHeader>
 
-        {canManageDocument ? (
-          <Alert variant="warning" className="-mt-1">
-            {match(status)
-              .with(DocumentStatus.DRAFT, () => (
-                <AlertDescription>
-                  <Trans>
-                    Please note that this action is <strong>irreversible</strong>. Once confirmed,
-                    this document will be permanently deleted.
-                  </Trans>
-                </AlertDescription>
-              ))
-              .with(DocumentStatus.PENDING, () => (
-                <AlertDescription>
-                  <p>
+        <DialogBody className="space-y-4">
+          {canManageDocument ? (
+            <Alert variant="warning">
+              {match(status)
+                .with(DocumentStatus.DRAFT, () => (
+                  <AlertDescription>
                     <Trans>
-                      Please note that this action is <strong>irreversible</strong>.
+                      Please note that this action is <strong>irreversible</strong>. Once confirmed,
+                      this document will be permanently deleted.
                     </Trans>
-                  </p>
+                  </AlertDescription>
+                ))
+                .with(DocumentStatus.PENDING, () => (
+                  <AlertDescription>
+                    <p>
+                      <Trans>
+                        Please note that this action is <strong>irreversible</strong>.
+                      </Trans>
+                    </p>
 
-                  <p className="mt-1">
-                    <Trans>Once confirmed, the following will occur:</Trans>
-                  </p>
+                    <p className="mt-1">
+                      <Trans>Once confirmed, the following will occur:</Trans>
+                    </p>
 
-                  <ul className="mt-0.5 list-inside list-disc">
-                    <li>
-                      <Trans>Document will be permanently deleted</Trans>
-                    </li>
-                    <li>
-                      <Trans>Document signing process will be cancelled</Trans>
-                    </li>
-                    <li>
-                      <Trans>All inserted signatures will be voided</Trans>
-                    </li>
-                    <li>
-                      <Trans>All recipients will be notified</Trans>
-                    </li>
-                  </ul>
-                </AlertDescription>
-              ))
-              .with(P.union(DocumentStatus.COMPLETED, DocumentStatus.REJECTED), () => (
-                <AlertDescription>
-                  <p>
-                    <Trans>By deleting this document, the following will occur:</Trans>
-                  </p>
+                    <ul className="mt-0.5 list-inside list-disc">
+                      <li>
+                        <Trans>Document will be permanently deleted</Trans>
+                      </li>
+                      <li>
+                        <Trans>Document signing process will be cancelled</Trans>
+                      </li>
+                      <li>
+                        <Trans>All inserted signatures will be voided</Trans>
+                      </li>
+                      <li>
+                        <Trans>All recipients will be notified</Trans>
+                      </li>
+                    </ul>
+                  </AlertDescription>
+                ))
+                .with(P.union(DocumentStatus.COMPLETED, DocumentStatus.REJECTED), () => (
+                  <AlertDescription>
+                    <p>
+                      <Trans>By deleting this document, the following will occur:</Trans>
+                    </p>
 
-                  <ul className="mt-0.5 list-inside list-disc">
-                    <li>
-                      <Trans>The document will be hidden from your account</Trans>
-                    </li>
-                    <li>
-                      <Trans>Recipients will still retain their copy of the document</Trans>
-                    </li>
-                  </ul>
-                </AlertDescription>
-              ))
-              .exhaustive()}
-          </Alert>
-        ) : (
-          <Alert variant="warning" className="-mt-1">
-            <AlertDescription>
-              <Trans>Please contact support if you would like to revert this action.</Trans>
-            </AlertDescription>
-          </Alert>
-        )}
+                    <ul className="mt-0.5 list-inside list-disc">
+                      <li>
+                        <Trans>The document will be hidden from your account</Trans>
+                      </li>
+                      <li>
+                        <Trans>Recipients will still retain their copy of the document</Trans>
+                      </li>
+                    </ul>
+                  </AlertDescription>
+                ))
+                .exhaustive()}
+            </Alert>
+          ) : (
+            <Alert variant="warning">
+              <AlertDescription>
+                <Trans>Please contact support if you would like to revert this action.</Trans>
+              </AlertDescription>
+            </Alert>
+          )}
 
-        {status !== DocumentStatus.DRAFT && canManageDocument && (
-          <Input
-            type="text"
-            value={inputValue}
-            onChange={onInputChange}
-            placeholder={_(msg`Please type ${`'${_(deleteMessage)}'`} to confirm`)}
-          />
-        )}
+          {status !== DocumentStatus.DRAFT && canManageDocument && (
+            <Input
+              type="text"
+              value={inputValue}
+              onChange={onInputChange}
+              placeholder={_(msg`Please type ${`'${_(deleteMessage)}'`} to confirm`)}
+            />
+          )}
+        </DialogBody>
 
         <DialogFooter>
           <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>

@@ -1,7 +1,9 @@
 import { OrganisationType } from '@prisma/client';
 
+import { IS_COCKPIT_MODE } from '@documenso/lib/constants/app';
 import { ORGANISATION_MEMBER_ROLE_PERMISSIONS_MAP } from '@documenso/lib/constants/organisations';
 import { AppError, AppErrorCode } from '@documenso/lib/errors/app-error';
+import { syncOrganisationToCockpit } from '@documenso/lib/server-only/cockpit';
 import { buildOrganisationWhereQuery } from '@documenso/lib/utils/organisations';
 import { prisma } from '@documenso/prisma';
 
@@ -165,4 +167,23 @@ export const updateOrganisationSettingsRoute = authenticatedProcedure
         },
       },
     });
+
+    // Sync settings to Cockpit (non-blocking) if in Cockpit mode
+    if (IS_COCKPIT_MODE()) {
+      syncOrganisationToCockpit(user.id, {
+        documentVisibility,
+        documentLanguage,
+        documentTimezone,
+        documentDateFormat,
+        includeSenderDetails,
+        includeSigningCertificate,
+        includeAuditLog,
+        typedSignatureEnabled: derivedTypedSignatureEnabled,
+        uploadSignatureEnabled: derivedUploadSignatureEnabled,
+        drawSignatureEnabled: derivedDrawSignatureEnabled,
+        emailReplyTo,
+      }).catch((err) => {
+        ctx.logger.error('[Cockpit] Failed to sync settings to Cockpit:', err);
+      });
+    }
   });

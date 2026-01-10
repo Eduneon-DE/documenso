@@ -82,6 +82,8 @@ export type DocumentPreferencesFormProps = {
   settings: SettingsSubset;
   canInherit: boolean;
   isAiFeaturesConfigured?: boolean;
+  hideLanguageAndTimezone?: boolean;
+  hideDelegateDocumentOwnership?: boolean;
   onFormSubmit: (data: TDocumentPreferencesFormSchema) => Promise<void>;
 };
 
@@ -90,6 +92,8 @@ export const DocumentPreferencesForm = ({
   onFormSubmit,
   canInherit,
   isAiFeaturesConfigured = false,
+  hideLanguageAndTimezone = false,
+  hideDelegateDocumentOwnership = false,
 }: DocumentPreferencesFormProps) => {
   const { t } = useLingui();
   const { user, organisations } = useSession();
@@ -192,51 +196,53 @@ export const DocumentPreferencesForm = ({
             />
           )}
 
-          <FormField
-            control={form.control}
-            name="documentLanguage"
-            render={({ field }) => (
-              <FormItem className="flex-1">
-                <FormLabel>
-                  <Trans>Default Document Language</Trans>
-                </FormLabel>
+          {!hideLanguageAndTimezone && (
+            <FormField
+              control={form.control}
+              name="documentLanguage"
+              render={({ field }) => (
+                <FormItem className="flex-1">
+                  <FormLabel>
+                    <Trans>Default Document Language</Trans>
+                  </FormLabel>
 
-                <FormControl>
-                  <Select
-                    {...field}
-                    value={field.value === null ? '-1' : field.value}
-                    onValueChange={(value) => field.onChange(value === '-1' ? null : value)}
-                  >
-                    <SelectTrigger
-                      className="bg-background text-muted-foreground"
-                      data-testid="document-language-trigger"
+                  <FormControl>
+                    <Select
+                      {...field}
+                      value={field.value === null ? '-1' : field.value}
+                      onValueChange={(value) => field.onChange(value === '-1' ? null : value)}
                     >
-                      <SelectValue />
-                    </SelectTrigger>
+                      <SelectTrigger
+                        className="bg-background text-muted-foreground"
+                        data-testid="document-language-trigger"
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
 
-                    <SelectContent>
-                      {Object.entries(SUPPORTED_LANGUAGES).map(([code, language]) => (
-                        <SelectItem key={code} value={code}>
-                          {language.full}
+                      <SelectContent>
+                        {Object.entries(SUPPORTED_LANGUAGES).map(([code, language]) => (
+                          <SelectItem key={code} value={code}>
+                            {language.full}
+                          </SelectItem>
+                        ))}
+
+                        <SelectItem value={'-1'}>
+                          <Trans>Inherit from organisation</Trans>
                         </SelectItem>
-                      ))}
+                      </SelectContent>
+                    </Select>
+                  </FormControl>
 
-                      <SelectItem value={'-1'}>
-                        <Trans>Inherit from organisation</Trans>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </FormControl>
-
-                <FormDescription>
-                  <Trans>
-                    Controls the default language of an uploaded document. This will be used as the
-                    language in email communications with the recipients.
-                  </Trans>
-                </FormDescription>
-              </FormItem>
-            )}
-          />
+                  <FormDescription>
+                    <Trans>
+                      Controls the default language of an uploaded document. This will be used as
+                      the language in email communications with the recipients.
+                    </Trans>
+                  </FormDescription>
+                </FormItem>
+              )}
+            />
+          )}
 
           <FormField
             control={form.control}
@@ -277,32 +283,34 @@ export const DocumentPreferencesForm = ({
             )}
           />
 
-          <FormField
-            control={form.control}
-            name="documentTimezone"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>
-                  <Trans>Default Time Zone</Trans>
-                </FormLabel>
+          {!hideLanguageAndTimezone && (
+            <FormField
+              control={form.control}
+              name="documentTimezone"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    <Trans>Default Time Zone</Trans>
+                  </FormLabel>
 
-                <FormControl>
-                  <Combobox
-                    triggerPlaceholder={
-                      canInherit ? t`Inherit from organisation` : t`Local timezone`
-                    }
-                    placeholder={t`Select a time zone`}
-                    options={TIME_ZONES}
-                    value={field.value}
-                    onChange={(value) => field.onChange(value)}
-                    testId="document-timezone-trigger"
-                  />
-                </FormControl>
+                  <FormControl>
+                    <Combobox
+                      triggerPlaceholder={
+                        canInherit ? t`Inherit from organisation` : t`Local timezone`
+                      }
+                      placeholder={t`Select a time zone`}
+                      options={TIME_ZONES}
+                      value={field.value}
+                      onChange={(value) => field.onChange(value)}
+                      testId="document-timezone-trigger"
+                    />
+                  </FormControl>
 
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
 
           <FormField
             control={form.control}
@@ -519,51 +527,53 @@ export const DocumentPreferencesForm = ({
             )}
           />
 
-          <FormField
-            control={form.control}
-            name="delegateDocumentOwnership"
-            render={({ field }) => (
-              <FormItem className="flex-1">
-                <FormLabel>
-                  <Trans>Delegate Document Ownership</Trans>
-                </FormLabel>
+          {!hideDelegateDocumentOwnership && (
+            <FormField
+              control={form.control}
+              name="delegateDocumentOwnership"
+              render={({ field }) => (
+                <FormItem className="flex-1">
+                  <FormLabel>
+                    <Trans>Delegate Document Ownership</Trans>
+                  </FormLabel>
 
-                <Select
-                  {...field}
-                  value={field.value === null ? '-1' : field.value.toString()}
-                  onValueChange={(value) =>
-                    field.onChange(value === 'true' ? true : value === 'false' ? false : null)
-                  }
-                >
-                  <SelectTrigger className="bg-background text-muted-foreground">
-                    <SelectValue />
-                  </SelectTrigger>
+                  <Select
+                    {...field}
+                    value={field.value === null ? '-1' : field.value.toString()}
+                    onValueChange={(value) =>
+                      field.onChange(value === 'true' ? true : value === 'false' ? false : null)
+                    }
+                  >
+                    <SelectTrigger className="bg-background text-muted-foreground">
+                      <SelectValue />
+                    </SelectTrigger>
 
-                  <SelectContent>
-                    <SelectItem value="true">
-                      <Trans>Yes</Trans>
-                    </SelectItem>
-
-                    <SelectItem value="false">
-                      <Trans>No</Trans>
-                    </SelectItem>
-
-                    {canInherit && (
-                      <SelectItem value={'-1'}>
-                        <Trans>Inherit from organisation</Trans>
+                    <SelectContent>
+                      <SelectItem value="true">
+                        <Trans>Yes</Trans>
                       </SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
 
-                <FormDescription>
-                  <Trans>
-                    Enable team API tokens to delegate document ownership to another team member.
-                  </Trans>
-                </FormDescription>
-              </FormItem>
-            )}
-          />
+                      <SelectItem value="false">
+                        <Trans>No</Trans>
+                      </SelectItem>
+
+                      {canInherit && (
+                        <SelectItem value={'-1'}>
+                          <Trans>Inherit from organisation</Trans>
+                        </SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+
+                  <FormDescription>
+                    <Trans>
+                      Enable team API tokens to delegate document ownership to another team member.
+                    </Trans>
+                  </FormDescription>
+                </FormItem>
+              )}
+            />
+          )}
 
           {isAiFeaturesConfigured && (
             <FormField
@@ -618,7 +628,16 @@ export const DocumentPreferencesForm = ({
             />
           )}
 
-          <div className="flex flex-row justify-end space-x-4">
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'flex-end',
+              gap: '8px',
+              borderTop: '1px solid #EBE9F1',
+              paddingTop: '24px',
+              marginTop: '8px',
+            }}
+          >
             <Button type="submit" loading={form.formState.isSubmitting}>
               <Trans>Update</Trans>
             </Button>

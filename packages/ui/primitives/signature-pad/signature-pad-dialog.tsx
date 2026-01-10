@@ -6,7 +6,15 @@ import { Trans, useLingui } from '@lingui/react/macro';
 import { motion } from 'framer-motion';
 
 import { parseMessageDescriptor } from '@documenso/lib/utils/i18n';
-import { Dialog, DialogClose, DialogContent, DialogFooter } from '@documenso/ui/primitives/dialog';
+import {
+  Dialog,
+  DialogBody,
+  DialogClose,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@documenso/ui/primitives/dialog';
 
 import { cn } from '../../lib/utils';
 import { Button } from '../button';
@@ -111,22 +119,30 @@ export const SignaturePadDialog = ({
       </motion.button>
 
       <Dialog open={showSignatureModal} onOpenChange={disabled ? undefined : setShowSignatureModal}>
-        <DialogContent hideClose={true} className="p-6 pt-4">
-          <SignaturePad
-            id="signature"
-            fullName={fullName}
-            value={value}
-            className={className}
-            disabled={disabled}
-            onChange={({ value }) => setSignature(value)}
-            typedSignatureEnabled={typedSignatureEnabled}
-            uploadSignatureEnabled={uploadSignatureEnabled}
-            drawSignatureEnabled={drawSignatureEnabled}
-          />
+        <DialogContent hideClose={true}>
+          <DialogHeader>
+            <DialogTitle>
+              <Trans>Signature</Trans>
+            </DialogTitle>
+          </DialogHeader>
+
+          <DialogBody>
+            <SignaturePad
+              id="signature"
+              fullName={fullName}
+              value={value}
+              className={className}
+              disabled={disabled}
+              onChange={({ value }) => setSignature(value)}
+              typedSignatureEnabled={typedSignatureEnabled}
+              uploadSignatureEnabled={uploadSignatureEnabled}
+              drawSignatureEnabled={drawSignatureEnabled}
+            />
+          </DialogBody>
 
           <DialogFooter>
             <DialogClose asChild>
-              <Button type="button" variant="ghost">
+              <Button type="button" variant="secondary">
                 <Trans>Cancel</Trans>
               </Button>
             </DialogClose>

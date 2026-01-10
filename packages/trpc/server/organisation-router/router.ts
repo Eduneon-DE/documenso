@@ -12,6 +12,7 @@ import { deleteOrganisationMembersRoute } from './delete-organisation-members';
 import { findOrganisationGroupsRoute } from './find-organisation-groups';
 import { findOrganisationMemberInvitesRoute } from './find-organisation-member-invites';
 import { findOrganisationMembersRoute } from './find-organisation-members';
+import { getCockpitBrandingRoute } from './get-cockpit-branding';
 import { getOrganisationRoute } from './get-organisation';
 import { getOrganisationMemberInvitesRoute } from './get-organisation-member-invites';
 import { getOrganisationSessionRoute } from './get-organisation-session';
@@ -53,6 +54,9 @@ export const organisationRouter = router({
   },
   settings: {
     update: updateOrganisationSettingsRoute,
+  },
+  branding: {
+    getCockpitBranding: getCockpitBrandingRoute,
   },
   internal: {
     getOrganisationSession: getOrganisationSessionRoute,

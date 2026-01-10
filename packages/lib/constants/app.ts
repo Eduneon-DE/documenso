@@ -30,6 +30,8 @@ export const USE_INTERNAL_URL_BROWSERLESS = () =>
 export const IS_AI_FEATURES_CONFIGURED = () =>
   !!env('GOOGLE_VERTEX_PROJECT_ID') && !!env('GOOGLE_VERTEX_API_KEY');
 
+export const IS_COCKPIT_MODE = () => env('NEXT_PUBLIC_COCKPIT_MODE') === 'true';
+
 /**
  * Temporary flag to toggle between Playwright-based and Konva-based PDF generation
  * for audit logs during sealing.

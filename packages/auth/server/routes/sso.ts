@@ -3,6 +3,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 
 import { AppError, AppErrorCode } from '@documenso/lib/errors/app-error';
+import { syncCockpitConfigToOrganisation } from '@documenso/lib/server-only/cockpit';
 import { prisma } from '@documenso/prisma';
 
 import { OidcAuthOptions } from '../config';
@@ -127,6 +128,11 @@ export const ssoRoute = new Hono<HonoAuthContext>()
 
     // Create session
     await onAuthorize({ userId: user.id }, c);
+
+    // Sync Cockpit config to organisation settings (non-blocking)
+    syncCockpitConfigToOrganisation(user.id, accessToken).catch((err) => {
+      console.error('[SSO] Failed to sync Cockpit config:', err);
+    });
 
     return c.json({
       success: true,

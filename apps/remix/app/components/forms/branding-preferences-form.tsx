@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Trans, useLingui } from '@lingui/react/macro';
@@ -9,6 +9,7 @@ import { z } from 'zod';
 
 import { useCurrentOrganisation } from '@documenso/lib/client-only/providers/organisation';
 import { NEXT_PUBLIC_WEBAPP_URL } from '@documenso/lib/constants/app';
+import { trpc } from '@documenso/trpc/react';
 import { cn } from '@documenso/ui/lib/utils';
 import { Button } from '@documenso/ui/primitives/button';
 import {
@@ -60,6 +61,8 @@ export type BrandingPreferencesFormProps = {
   settings: SettingsSubset;
   onFormSubmit: (data: TBrandingPreferencesFormSchema) => Promise<void>;
   context: 'Team' | 'Organisation';
+  hideBrandWebsite?: boolean;
+  enableCockpitSync?: boolean;
 };
 
 export function BrandingPreferencesForm({
@@ -67,6 +70,8 @@ export function BrandingPreferencesForm({
   settings,
   onFormSubmit,
   context,
+  hideBrandWebsite = false,
+  enableCockpitSync = false,
 }: BrandingPreferencesFormProps) {
   const { t } = useLingui();
 
@@ -75,6 +80,14 @@ export function BrandingPreferencesForm({
 
   const [previewUrl, setPreviewUrl] = useState<string>('');
   const [hasLoadedPreview, setHasLoadedPreview] = useState(false);
+  const [isSyncingFromCockpit, setIsSyncingFromCockpit] = useState(false);
+  const hasAutoSynced = useRef(false);
+
+  // Fetch Cockpit branding if sync is enabled
+  const { data: cockpitBranding } = trpc.organisation.branding.getCockpitBranding.useQuery(
+    undefined,
+    { enabled: enableCockpitSync },
+  );
 
   const form = useForm<TBrandingPreferencesFormSchema>({
     defaultValues: {
@@ -88,25 +101,106 @@ export function BrandingPreferencesForm({
 
   const isBrandingEnabled = form.watch('brandingEnabled');
 
+  // Compute preview URL: prioritize Cockpit data URL (always works), then settings API endpoint
   useEffect(() => {
-    if (settings.brandingLogo) {
-      const file = JSON.parse(settings.brandingLogo);
-
-      if ('type' in file && 'data' in file) {
-        const logoUrl =
-          context === 'Team'
-            ? `${NEXT_PUBLIC_WEBAPP_URL()}/api/branding/logo/team/${team?.id}`
-            : `${NEXT_PUBLIC_WEBAPP_URL()}/api/branding/logo/organisation/${organisation?.id}`;
-
-        setPreviewUrl(logoUrl);
-        setHasLoadedPreview(true);
+    // First priority: Cockpit branding data URL (works immediately, no API call needed)
+    if (enableCockpitSync && cockpitBranding?.logoBase64 && cockpitBranding?.logoContentType) {
+      const dataUrl = `data:${cockpitBranding.logoContentType};base64,${cockpitBranding.logoBase64}`;
+      setPreviewUrl(dataUrl);
+    }
+    // Second priority: existing logo in settings (uses API endpoint)
+    else if (settings.brandingLogo) {
+      try {
+        const file = JSON.parse(settings.brandingLogo);
+        if ('type' in file && 'data' in file) {
+          const logoUrl =
+            context === 'Team'
+              ? `${NEXT_PUBLIC_WEBAPP_URL()}/api/branding/logo/team/${team?.id}`
+              : `${NEXT_PUBLIC_WEBAPP_URL()}/api/branding/logo/organisation/${organisation?.id}`;
+          setPreviewUrl(logoUrl);
+        }
+      } catch (e) {
+        console.error('Failed to parse brandingLogo:', e);
       }
     }
 
     setHasLoadedPreview(true);
-  }, [settings.brandingLogo]);
+  }, [
+    settings.brandingLogo,
+    context,
+    team?.id,
+    organisation?.id,
+    enableCockpitSync,
+    cockpitBranding?.logoBase64,
+    cockpitBranding?.logoContentType,
+  ]);
 
-  // Cleanup ObjectURL on unmount or when previewUrl changes
+  // Auto-sync logo from Cockpit to Documenso database (one-time save)
+  useEffect(() => {
+    const syncLogoFromCockpit = async () => {
+      // Only sync if: enabled, Cockpit has logo data, Documenso doesn't have one, and hasn't synced yet
+      if (
+        !enableCockpitSync ||
+        !cockpitBranding?.logoBase64 ||
+        !cockpitBranding?.logoContentType ||
+        settings.brandingLogo ||
+        hasAutoSynced.current ||
+        isSyncingFromCockpit
+      ) {
+        return;
+      }
+
+      hasAutoSynced.current = true;
+      setIsSyncingFromCockpit(true);
+
+      try {
+        // Convert base64 to blob then to File for form submission
+        const byteCharacters = atob(cockpitBranding.logoBase64);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: cockpitBranding.logoContentType });
+
+        const extension = cockpitBranding.logoContentType.split('/')[1] || 'png';
+        const fileName = `cockpit-logo.${extension}`;
+        const file = new File([blob], fileName, { type: cockpitBranding.logoContentType });
+
+        if (file.size > MAX_FILE_SIZE) {
+          console.warn('Cockpit logo file is too large (max 5MB), skipping auto-sync');
+          return;
+        }
+
+        form.setValue('brandingLogo', file);
+
+        // Auto-save to Documenso database
+        const formData = form.getValues();
+        await onFormSubmit({
+          ...formData,
+          brandingLogo: file,
+        });
+
+        console.log('Auto-synced and saved logo from Cockpit successfully');
+      } catch (error) {
+        console.error('Failed to auto-sync logo from Cockpit:', error);
+      } finally {
+        setIsSyncingFromCockpit(false);
+      }
+    };
+
+    void syncLogoFromCockpit();
+  }, [
+    cockpitBranding?.logoBase64,
+    cockpitBranding?.logoContentType,
+    enableCockpitSync,
+    settings.brandingLogo,
+    isSyncingFromCockpit,
+    form,
+    onFormSubmit,
+  ]);
+
+  // Cleanup blob URLs on unmount (for manually uploaded files)
   useEffect(() => {
     return () => {
       if (previewUrl.startsWith('blob:')) {
@@ -173,7 +267,7 @@ export function BrandingPreferencesForm({
           />
 
           <div className="relative flex w-full flex-col gap-y-4">
-            {!isBrandingEnabled && <div className="bg-background/60 absolute inset-0 z-[9998]" />}
+            {!isBrandingEnabled && <div className="absolute inset-0 z-[9998] bg-background/60" />}
 
             <FormField
               control={form.control}
@@ -185,7 +279,7 @@ export function BrandingPreferencesForm({
                   </FormLabel>
 
                   <div className="flex flex-col gap-4">
-                    <div className="border-border bg-background relative h-48 w-full overflow-hidden rounded-lg border">
+                    <div className="relative h-48 w-full overflow-hidden rounded-lg border border-border bg-background">
                       {previewUrl ? (
                         <img
                           src={previewUrl}
@@ -193,12 +287,21 @@ export function BrandingPreferencesForm({
                           className="h-full w-full object-contain p-4"
                         />
                       ) : (
-                        <div className="bg-muted/20 dark:bg-muted text-muted-foreground relative flex h-full w-full items-center justify-center text-sm">
-                          <Trans>Please upload a logo</Trans>
+                        <div className="relative flex h-full w-full flex-col items-center justify-center gap-3 bg-muted/20 text-sm text-muted-foreground dark:bg-muted">
+                          {isSyncingFromCockpit ? (
+                            <>
+                              <Loader className="h-6 w-6 animate-spin" />
+                              <span>
+                                <Trans>Syncing logo from Cockpit...</Trans>
+                              </span>
+                            </>
+                          ) : (
+                            <Trans>Please upload a logo</Trans>
+                          )}
 
                           {!hasLoadedPreview && (
-                            <div className="bg-muted dark:bg-muted absolute inset-0 z-[999] flex items-center justify-center">
-                              <Loader className="text-muted-foreground h-8 w-8 animate-spin" />
+                            <div className="absolute inset-0 z-[999] flex items-center justify-center bg-muted dark:bg-muted">
+                              <Loader className="h-8 w-8 animate-spin text-muted-foreground" />
                             </div>
                           )}
                         </div>
@@ -243,7 +346,7 @@ export function BrandingPreferencesForm({
                           type="button"
                           variant="link"
                           size="sm"
-                          className="text-destructive text-xs"
+                          className="text-xs text-destructive"
                           onClick={() => {
                             setPreviewUrl('');
                             onChange(null);
@@ -269,37 +372,39 @@ export function BrandingPreferencesForm({
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="brandingUrl"
-              render={({ field }) => (
-                <FormItem className="flex-1">
-                  <FormLabel>
-                    <Trans>Brand Website</Trans>
-                  </FormLabel>
+            {!hideBrandWebsite && (
+              <FormField
+                control={form.control}
+                name="brandingUrl"
+                render={({ field }) => (
+                  <FormItem className="flex-1">
+                    <FormLabel>
+                      <Trans>Brand Website</Trans>
+                    </FormLabel>
 
-                  <FormControl>
-                    <Input
-                      type="url"
-                      placeholder="https://example.com"
-                      disabled={!isBrandingEnabled}
-                      {...field}
-                    />
-                  </FormControl>
+                    <FormControl>
+                      <Input
+                        type="url"
+                        placeholder="https://example.com"
+                        disabled={!isBrandingEnabled}
+                        {...field}
+                      />
+                    </FormControl>
 
-                  <FormDescription>
-                    <Trans>Your brand website URL</Trans>
+                    <FormDescription>
+                      <Trans>Your brand website URL</Trans>
 
-                    {canInherit && (
-                      <span>
-                        {'. '}
-                        <Trans>Leave blank to inherit from the organisation.</Trans>
-                      </span>
-                    )}
-                  </FormDescription>
-                </FormItem>
-              )}
-            />
+                      {canInherit && (
+                        <span>
+                          {'. '}
+                          <Trans>Leave blank to inherit from the organisation.</Trans>
+                        </span>
+                      )}
+                    </FormDescription>
+                  </FormItem>
+                )}
+              />
+            )}
 
             <FormField
               control={form.control}
@@ -334,7 +439,16 @@ export function BrandingPreferencesForm({
             />
           </div>
 
-          <div className="flex flex-row justify-end space-x-4">
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'flex-end',
+              gap: '8px',
+              borderTop: '1px solid #EBE9F1',
+              paddingTop: '24px',
+              marginTop: '8px',
+            }}
+          >
             <Button type="submit" loading={form.formState.isSubmitting}>
               <Trans>Update</Trans>
             </Button>

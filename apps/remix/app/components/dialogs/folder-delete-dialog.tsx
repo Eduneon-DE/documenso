@@ -14,6 +14,7 @@ import { Alert, AlertDescription } from '@documenso/ui/primitives/alert';
 import { Button } from '@documenso/ui/primitives/button';
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -110,42 +111,44 @@ export const FolderDeleteDialog = ({ folder, isOpen, onOpenChange }: FolderDelet
           </DialogDescription>
         </DialogHeader>
 
-        {(folder._count.documents > 0 ||
-          folder._count.templates > 0 ||
-          folder._count.subfolders > 0) && (
-          <Alert variant="destructive">
-            <AlertDescription>
-              <Trans>
-                This folder contains multiple items. Deleting it will remove all subfolders and move
-                all nested documents and templates to the root folder.
-              </Trans>
-            </AlertDescription>
-          </Alert>
-        )}
-
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onFormSubmit)}>
-            <fieldset disabled={form.formState.isSubmitting} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="confirmText"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
+            <fieldset disabled={form.formState.isSubmitting}>
+              <DialogBody className="space-y-4">
+                {(folder._count.documents > 0 ||
+                  folder._count.templates > 0 ||
+                  folder._count.subfolders > 0) && (
+                  <Alert variant="destructive">
+                    <AlertDescription>
                       <Trans>
-                        Confirm by typing:{' '}
-                        <span className="font-sm text-destructive font-semibold">
-                          {deleteMessage}
-                        </span>
+                        This folder contains multiple items. Deleting it will remove all subfolders
+                        and move all nested documents and templates to the root folder.
                       </Trans>
-                    </FormLabel>
-                    <FormControl>
-                      <Input placeholder={deleteMessage} {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
+                    </AlertDescription>
+                  </Alert>
                 )}
-              />
+
+                <FormField
+                  control={form.control}
+                  name="confirmText"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        <Trans>
+                          Confirm by typing:{' '}
+                          <span className="font-sm font-semibold text-destructive">
+                            {deleteMessage}
+                          </span>
+                        </Trans>
+                      </FormLabel>
+                      <FormControl>
+                        <Input placeholder={deleteMessage} {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </DialogBody>
 
               <DialogFooter>
                 <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>

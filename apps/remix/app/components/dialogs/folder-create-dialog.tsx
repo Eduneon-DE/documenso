@@ -13,6 +13,7 @@ import { trpc } from '@documenso/trpc/react';
 import { Button } from '@documenso/ui/primitives/button';
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -113,22 +114,24 @@ export const FolderCreateDialog = ({ type, trigger, ...props }: FolderCreateDial
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>
-            <fieldset disabled={form.formState.isSubmitting} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      <Trans>Folder Name</Trans>
-                    </FormLabel>
-                    <FormControl>
-                      <Input placeholder={t`My Folder`} {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            <fieldset disabled={form.formState.isSubmitting}>
+              <DialogBody className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        <Trans>Folder Name</Trans>
+                      </FormLabel>
+                      <FormControl>
+                        <Input placeholder={t`My Folder`} {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </DialogBody>
 
               <DialogFooter>
                 <Button

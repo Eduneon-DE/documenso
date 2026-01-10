@@ -153,7 +153,7 @@ export const handleOAuthCallbackUrl = async (options: HandleOAuthCallbackUrlOpti
     return user;
   });
 
-  await onCreateUserHook(createdUser).catch((err) => {
+  await onCreateUserHook(createdUser, { accessToken }).catch((err) => {
     // Todo: (RR7) Add logging.
     console.error(err);
   });
