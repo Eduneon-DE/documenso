@@ -20,6 +20,9 @@ export {
 // Config sync
 export { syncCockpitConfigToOrganisation, syncOrganisationToCockpit } from './sync-config';
 
+// JWT validation for Cockpit/Authentik tokens
+export { getUserFromJwt, validateAuthentikJwt } from './validate-jwt';
+
 // Upsert config
 export { upsertDocumensoConfig } from './client';
 

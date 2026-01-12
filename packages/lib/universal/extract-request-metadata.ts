@@ -26,8 +26,11 @@ export type ApiRequestMetadata = {
    * The method of authentication used to access the API.
    *
    * If the request is not authenticated, the value will be `null`.
+   * - 'api': API token (api_xxx format)
+   * - 'session': Browser session cookie
+   * - 'jwt': JWT token from external IDP (e.g., Cockpit/Authentik)
    */
-  auth: 'api' | 'session' | null;
+  auth: 'api' | 'session' | 'jwt' | null;
 
   /**
    * The user that is performing the action.

@@ -2,6 +2,7 @@ import { TRPCError, initTRPC } from '@trpc/server';
 import type { AnyZodObject } from 'zod';
 
 import { AppError, genericErrorCodeToTrpcErrorCodeMap } from '@documenso/lib/errors/app-error';
+import { getUserFromJwt } from '@documenso/lib/server-only/cockpit/validate-jwt';
 import { getApiTokenByToken } from '@documenso/lib/server-only/public-api/get-api-token-by-token';
 import type { TrpcApiLog } from '@documenso/lib/types/api-logs';
 import type { ApiRequestMetadata } from '@documenso/lib/universal/extract-request-metadata';
@@ -78,7 +79,7 @@ export const authenticatedMiddleware = t.middleware(async ({ ctx, next, path }) 
 
   const authorizationHeader = ctx.req.headers.get('authorization');
 
-  // Taken from `authenticatedMiddleware` in `@documenso/api/v1/middleware/authenticated.ts`.
+  // Support API tokens, JWT tokens from Authentik/Cockpit, and session auth
   if (authorizationHeader) {
     // Support for both "Authorization: Bearer api_xxx" and "Authorization: api_xxx"
     const [token] = (authorizationHeader || '').split('Bearer ').filter((s) => s.length > 0);
@@ -87,36 +88,80 @@ export const authenticatedMiddleware = t.middleware(async ({ ctx, next, path }) 
       throw new Error('Token was not provided for authenticated middleware');
     }
 
-    const apiToken = await getApiTokenByToken({ token });
+    // Check if token looks like an API token (starts with api_) or is a JWT (has dots)
+    const isApiToken = token.startsWith('api_');
+    const isJwt = token.includes('.') && token.split('.').length === 3;
 
-    ctx.logger.info({
-      ...infoToLog,
-      userId: apiToken.user.id,
-      apiTokenId: apiToken.id,
-    } satisfies TrpcApiLog);
+    // Try API token validation first if it looks like one
+    if (isApiToken) {
+      const apiToken = await getApiTokenByToken({ token });
 
-    return await next({
-      ctx: {
-        ...ctx,
-        user: apiToken.user,
-        teamId: apiToken.teamId,
-        session: null,
-        metadata: {
-          ...ctx.metadata,
-          auditUser: apiToken.team
-            ? {
-                id: null,
-                email: null,
-                name: apiToken.team.name,
-              }
-            : {
-                id: apiToken.user.id,
-                email: apiToken.user.email,
-                name: apiToken.user.name,
+      ctx.logger.info({
+        ...infoToLog,
+        userId: apiToken.user.id,
+        apiTokenId: apiToken.id,
+      } satisfies TrpcApiLog);
+
+      return await next({
+        ctx: {
+          ...ctx,
+          user: apiToken.user,
+          teamId: apiToken.teamId,
+          session: null,
+          metadata: {
+            ...ctx.metadata,
+            auditUser: apiToken.team
+              ? {
+                  id: null,
+                  email: null,
+                  name: apiToken.team.name,
+                }
+              : {
+                  id: apiToken.user.id,
+                  email: apiToken.user.email,
+                  name: apiToken.user.name,
+                },
+            auth: 'api',
+          } satisfies ApiRequestMetadata,
+        },
+      });
+    }
+
+    // Try JWT validation (for tokens from Cockpit/Authentik)
+    if (isJwt) {
+      const jwtUser = await getUserFromJwt(token);
+
+      if (jwtUser) {
+        ctx.logger.info({
+          ...infoToLog,
+          userId: jwtUser.id,
+          apiTokenId: null,
+          authMethod: 'jwt',
+        } satisfies TrpcApiLog & { authMethod: string });
+
+        return await next({
+          ctx: {
+            ...ctx,
+            user: jwtUser,
+            teamId: ctx.teamId,
+            session: null,
+            metadata: {
+              ...ctx.metadata,
+              auditUser: {
+                id: jwtUser.id,
+                email: jwtUser.email,
+                name: jwtUser.name,
               },
-          auth: 'api',
-        } satisfies ApiRequestMetadata,
-      },
+              auth: 'jwt',
+            } satisfies ApiRequestMetadata,
+          },
+        });
+      }
+    }
+
+    // If we get here with a token that didn't match API or JWT patterns, throw
+    throw new AppError('UNAUTHORIZED', {
+      message: 'Invalid token',
     });
   }
 
